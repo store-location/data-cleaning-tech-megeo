@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel File Processor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h1>Upload Your Excel File</h1>
+    <input type="file" id="uploadExcel" />
+    <button onclick="processExcel()">Process and Download</button>
+
+    <script>
+        let processedData = [];
+
+        function processExcel() {
+            const fileUpload = document.getElementById('uploadExcel').files[0];
+
+            if (fileUpload) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // Assuming first sheet contains data
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    // Process the Excel data
+                    processedData = transformData(jsonData);
+
+                    // Now download the processed file
+                    downloadExcel(processedData);
+                };
+                reader.readAsArrayBuffer(fileUpload);
+            } else {
+                alert("Please upload a file first.");
+            }
+        }
+
+        function transformData(data) {
+            let result = [];
+            let headers = data.map(row => row[0]); // The first column becomes headers
+            result.push(headers); // Add headers as the first row
+
+            // Now we transpose the rest of the data (values under each header)
+            let maxColumns = Math.max(...data.map(row => row.length)); // Find the max length of a row
+            for (let i = 1; i < maxColumns; i++) {
+                let newRow = [];
+                data.forEach(row => {
+                    newRow.push(row[i] || ""); // Add the value under the respective header
+                });
+                result.push(newRow); // Add the transposed row
+            }
+
+            return result;
+        }
+
+        function downloadExcel(data) {
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Processed Data");
+
+            XLSX.writeFile(wb, "processed_result.xlsx");
+        }
+    </script>
+</body>
+</html>
